@@ -47,6 +47,7 @@ Players take turns dropping pieces into one of seven columns. The first player t
 - Multiple game rooms
 
 **What I learned**
+
 This project helped me practice:
 - TCP socket programming
 - Client-server architecture
