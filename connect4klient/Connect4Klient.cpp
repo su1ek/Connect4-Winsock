@@ -4,12 +4,12 @@
 #include <ws2tcpip.h>
 #include <stdio.h>
 #include <iostream>
+#include <string>
 
 #pragma comment(lib, "Ws2_32.lib")
 
 #define DEFAULT_PORT "27015"
 #define DEFAULT_BUFLEN 512
-#define DEFAULT_SERVER "127.0.0.1"
 
 using namespace std;
 
@@ -80,13 +80,27 @@ void clearBoard() {
             board[i][j] = ' ';
 }
 
+void clearScreen() {
+    system("cls");
+}
+
 int main() {
     WSADATA wsaData;
     SOCKET ConnectSocket = INVALID_SOCKET;
     struct addrinfo* result = NULL, * ptr = NULL, hints;
     int iResult;
+    string nickname;
+    string serverIP;
 
     clearBoard();
+
+    cout << "--- CONNECT 4 CLIENT ---\n\n";
+
+    cout << "Podaj swoj nick: ";
+    getline(cin, nickname);
+
+    cout << "Podaj IP serwera: ";
+    getline(cin, serverIP);
 
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData);
     if (iResult != 0) {
@@ -99,7 +113,7 @@ int main() {
     hints.ai_socktype = SOCK_STREAM;
     hints.ai_protocol = IPPROTO_TCP;
 
-    iResult = getaddrinfo(DEFAULT_SERVER, DEFAULT_PORT, &hints, &result);
+    iResult = getaddrinfo(serverIP.c_str(), DEFAULT_PORT, &hints, &result);
     if (iResult != 0) {
         cout << "getaddrinfo failed: " << iResult << endl;
         WSACleanup();
@@ -131,10 +145,20 @@ int main() {
         return 1;
     }
 
+    send(
+        ConnectSocket,
+        nickname.c_str(),
+        (int)nickname.size() + 1,
+        0
+    );
+
+    cout << "\nPolaczono z serwerem.\n";
+    cout << "Twoj symbol: X\n\n";
+
     while (true) {
         printBoard();
         int move;
-        cout << "Wybierz kolumne (0-6): ";
+        cout << nickname << ", wybierz kolumne (0-6): ";
         cin >> move;
 
         if (!makeMove(move, CLIENT)) {
@@ -146,7 +170,7 @@ int main() {
 
         if (checkWin(CLIENT)) {
             printBoard();
-            cout << "Klient (X) wygrywa!\n";
+            cout << nickname << " (X) wygrywa!\n";
             break;
         }
 
@@ -157,6 +181,8 @@ int main() {
             cout << "Serwer (O) wygrywa!\n";
             break;
         }
+
+        clearScreen();
     }
 
     shutdown(ConnectSocket, SD_SEND);

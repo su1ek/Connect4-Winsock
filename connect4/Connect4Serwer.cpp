@@ -4,6 +4,7 @@
 #include <ws2tcpip.h>
 #include <stdio.h>
 #include <iostream>
+#include <string>
 
 #pragma comment(lib, "Ws2_32.lib") //linkowanie do biblioteki Ws2_32.lib ktora ma funkcje winsocka
 
@@ -34,6 +35,10 @@ void clearBoard() {                                         //ustawia na poczatk
     for (int i = 0; i < ROWS; ++i)
         for (int j = 0; j < COLS; ++j)
             board[i][j] = ' ';
+}
+
+void clearScreen() {                                        //funkcja do czyszczenia ekranu
+	system("cls");
 }
 
 bool makeMove(int col, char player) {                       
@@ -80,6 +85,14 @@ bool checkWin(char player) {
     return false;
 }
 
+bool isBoardFull() {                                 //sprawdza czy plansza jest pelna, jesli tak to remis
+	for (int r = 0; r < ROWS; r++)
+		for (int c = 0; c < COLS; c++)
+			if (board[r][c] == ' ')
+				return false;
+	return true;
+}
+
 int main() {
     WSADATA wsaData;
     int iResult;
@@ -89,8 +102,13 @@ int main() {
 
     struct addrinfo* result = NULL;
     struct addrinfo hints;
+    string serverNickname;
+    string clientNickname;
 
     clearBoard();
+    cout << "--- CONNECT 4 SERVER ---\n\n";
+	cout << "Podaj swoj nick: ";
+    getline(cin, serverNickname);
 
     iResult = WSAStartup(MAKEWORD(2, 2), &wsaData); //inicjalizacja winsocka
     if (iResult != 0) {                             // jak sie nie uda to konczymy program
@@ -145,21 +163,48 @@ int main() {
         return 1;
     }
 
+    char nicknameBuffer[50];
+
+    int nicknameResult =
+        recv(ClientSocket,
+            nicknameBuffer,
+            sizeof(nicknameBuffer),
+            0);
+
+    if (nicknameResult > 0)
+    {
+        clientNickname = nicknameBuffer;
+        cout << "\nGracz "
+            << clientNickname
+            << " dolaczyl do gry.\n";
+    }
+    else
+    {
+        clientNickname = "Client";
+    }
+
     closesocket(ListenSocket);
+
+    cout << "\nNacisnij ENTER aby rozpoczac gre...";
+    cin.get();
+
+    clearScreen();
 
     while (true) {
         recv(ClientSocket, (char*)board, sizeof(board), 0); //odbieramy tablice od klienta po jego ruchu
 
+        clearScreen();
+
         if (checkWin(CLIENT)) {                             //sprawdzamy czy po ruchu klienta jest zwyciêstwo
             printBoard();
-            cout << "Klient (X) wygrywa!\n";
+            cout << clientNickname << " (X) wygrywa!\n";
             break;
         }
 
         printBoard();
 
         int move;                                           //ruch serwera
-        cout << "Twoj ruch, wybierz kolumne (0-6): ";
+        cout << serverNickname << ", wybierz kolumne (0-6): ";
         cin >> move;
 
         if (!makeMove(move, SERVER)) {
@@ -169,9 +214,15 @@ int main() {
 
         send(ClientSocket, (char*)board, sizeof(board), 0);
 
+        if (isBoardFull()) {                                  //sprawdzanie czy plansza jest pelna, jesli tak to remis
+            printBoard();
+            cout << "Remis! Plansza jest pelna.\n";
+            break;
+        }
+
         if (checkWin(SERVER)) {                             //sprawdzanie wygranej serwera
             printBoard();
-            cout << "Serwer (O) wygrywa!\n";
+            cout << serverNickname << " (O) wygrywa!\n";
             break;
         }
     }
